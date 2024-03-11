@@ -23,3 +23,6 @@ results = search_manga(query, api_key)
 if results:
     for result in results:
         print(result["title"])
+# Future use with expanded features
+# numerical_features = df[['score', 'members']]
+# final_features = pd.concat([numerical_features, features], axis=1)

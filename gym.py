@@ -8,7 +8,7 @@ df['genres'] = df['genres'].fillna('')
 
 # Create a TfidfVectorizer and Remove stopwords
 tfidf = TfidfVectorizer(stop_words='english')# Fit and transform the data to a tfidf matrix
-tfidf_matrix = tfidf.fit_transform(df['genres'])# Print the shape of the tfidf_matrix
+tfidf_matrix = tfidf.fit_transform(df['title'])# Print the shape of the tfidf_matrix
 print(tfidf_matrix.shape)
 
 # Compute the cosine similarity between each movie description
