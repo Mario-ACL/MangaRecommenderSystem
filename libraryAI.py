@@ -5,6 +5,7 @@ from ast import literal_eval
 
 # Load data from CSV
 df = pd.read_csv('manga.csv')
+titles = df['title'].tolist()
 
 # Preprocess the data
 df['genres'] = df['genres'].apply(literal_eval)
@@ -30,21 +31,17 @@ similarity_matrix = cosine_similarity(sparse_features, sparse_features)
 
 
 # Recommendation Generation
-def get_recommendations(title, manga_titles, top_n=5):
-    idx = manga_titles.index(title)
+def get_recommendations(title, top_n=5):
+    idx = titles.index(title)
     similarity_scores = similarity_matrix[idx]
     similar_indices = similarity_scores.argsort()[::-1][1:top_n + 1]
-    similar_manga = [manga_titles[i] for i in similar_indices]
+    similar_manga = [titles[i] for i in similar_indices]
     return similar_manga
-
-
-def run_recommender():
-    pass
 
 
 # Example usage
 query_title = 'Boku no Hero Academia'
-recommended_manga = get_recommendations(query_title, df['title'].tolist())
+recommended_manga = get_recommendations(query_title)
 print("Recommended manga for '{}' are:".format(query_title))
 for manga in recommended_manga:
     print(manga)
