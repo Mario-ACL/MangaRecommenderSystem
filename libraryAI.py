@@ -30,7 +30,7 @@ similarity_matrix = cosine_similarity(sparse_features, sparse_features)
 
 
 # Recommendation Generation
-def get_recommendations(title, similarity_matrix, manga_titles, top_n=5):
+def get_recommendations(title, manga_titles, top_n=5):
     idx = manga_titles.index(title)
     similarity_scores = similarity_matrix[idx]
     similar_indices = similarity_scores.argsort()[::-1][1:top_n + 1]
@@ -38,9 +38,13 @@ def get_recommendations(title, similarity_matrix, manga_titles, top_n=5):
     return similar_manga
 
 
+def run_recommender():
+    pass
+
+
 # Example usage
-query_title = 'Mob Psycho 100'
-recommended_manga = get_recommendations(query_title, similarity_matrix, df['title'].tolist())
+query_title = 'Boku no Hero Academia'
+recommended_manga = get_recommendations(query_title, df['title'].tolist())
 print("Recommended manga for '{}' are:".format(query_title))
 for manga in recommended_manga:
     print(manga)
