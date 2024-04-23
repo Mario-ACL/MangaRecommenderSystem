@@ -3,12 +3,19 @@ from sklearn.metrics.pairwise import cosine_similarity
 from scipy.sparse import csr_matrix
 from ast import literal_eval
 import numpy as np
+import math
+
+
+def get_original_score(title):
+    temp_df = pd.read_csv('manga.csv')
+    queried_manga_details = temp_df[temp_df['title'].str.lower() == title].iloc[0]
+    return queried_manga_details['score']
 
 
 # Cargar datos desde un archivo CSV
 def load_data(progress_bar=None):
     df = pd.read_csv('manga.csv')
-    titles = df['title'].tolist()
+    titles = df['title'].str.lower().tolist()
     # Actualizar barra de progreso al cargar datos
     if progress_bar:
         progress_bar.update(5)
@@ -18,11 +25,12 @@ def load_data(progress_bar=None):
 # Preprocesar los datos
 def preprocess_data(df, progress_bar=None):
     df['genres'] = df['genres'].apply(literal_eval)
-    df['genres'] = df['genres'].apply(lambda x: 'NoGenres' if x is None else x)
     df['themes'] = df['themes'].apply(literal_eval)
-    df['themes'] = df['themes'].apply(lambda x: 'NoThemes' if x is None else x)
     df['demographics'] = df['demographics'].apply(literal_eval)
-    df['demographics'] = df['demographics'].apply(lambda x: 'NoDemographics' if x is None else x)
+    df['score'] = df['score'].apply(lambda x: 0 if x is None else x)
+    df['score'] = df['score'] / 10
+    # Replace NaN values with 0
+    df.fillna(0, inplace=True)
     # Actualizar barra de progreso después de preprocesar
     if progress_bar:
         progress_bar.update(25)
@@ -41,8 +49,8 @@ def get_encoded_data(df, progress_bar=None):
 
 
 # Concatenar características
-def concatenate_features(genres_encoded, themes_encoded, demographics_encoded, progress_bar=None):
-    features = pd.concat([genres_encoded, themes_encoded, demographics_encoded], axis=1)
+def concatenate_features(score_reduced, genres_encoded, themes_encoded, demographics_encoded, progress_bar=None):
+    features = pd.concat([score_reduced, genres_encoded, themes_encoded, demographics_encoded], axis=1)
     # Actualizar barra de progreso después de concatenar características
     if progress_bar:
         progress_bar.update(75)
@@ -69,6 +77,7 @@ def calculate_similarity_matrix_with_progress(sparse_features, progress_bar=None
 
         # Calcular similitud para el bloque actual
         chunk_similarities = cosine_similarity(sparse_features[start_idx:end_idx], sparse_features)
+        chunk_similarities[np.isnan(chunk_similarities)] = 0  # Replace NaN with 0
         similarity_matrix[start_idx:end_idx] = chunk_similarities
 
         # Actualizar la barra de progreso
@@ -84,30 +93,44 @@ def calculate_similarity_matrix_with_progress(sparse_features, progress_bar=None
 
 
 # Función para obtener recomendaciones
-def get_recommendations(title, similarity_matrix, titles, top_n=5):
-    idx = titles.index(title)
-    similarity_scores = similarity_matrix[idx]
-    similar_indices = similarity_scores.argsort()[::-1][1:top_n + 1]
-    similar_manga = [titles[i] for i in similar_indices]
-    return similar_manga
+def get_recommendations(title, similarity_matrix, titles, df, top_n=6):
+    title = title.lower()
+    if title in titles:
+        idx = titles.index(title)
+        df.loc[idx, "score"] = 1
+        similarity_scores = similarity_matrix[idx]
+        similar_indices = similarity_scores.argsort()[::-1][0:top_n]
+        similar_manga_details = []
+        for i in similar_indices:
+            manga_details = {
+                'Title': titles[i],
+                'Score': 0 if math.isnan(get_original_score(titles[i])) else get_original_score(titles[i]),
+                'Genres': df.loc[i, 'genres'],
+                'Themes': df.loc[i, 'themes'],
+                'Demographics': df.loc[i, 'demographics'],
+                'Similarity': similarity_scores[i]
+            }
+            similar_manga_details.append(manga_details)
+        return similar_manga_details
+    else:
+        return []
 
 
 # Ejemplo de uso
-def main(progress_bar=None):
+def full_calc(title, progress_bar=None, progress_bar2=None):
     df, titles = load_data(progress_bar)
     df = preprocess_data(df, progress_bar)
+    reduced_score = df["score"]
     genres_encoded, themes_encoded, demographics_encoded = get_encoded_data(df, progress_bar)
-    features = concatenate_features(genres_encoded, themes_encoded, demographics_encoded, progress_bar)
+    features = concatenate_features(reduced_score, genres_encoded, themes_encoded, demographics_encoded, progress_bar)
     sparse_features = convert_to_sparse_matrix(features, progress_bar)
-    similarity_matrix = calculate_similarity_matrix_with_progress(sparse_features, progress_bar)
+    similarity_matrix = calculate_similarity_matrix_with_progress(sparse_features, progress_bar2)
 
-    query_title = 'Boku no Hero Academia'
-    recommended_manga = get_recommendations(query_title, similarity_matrix, titles)
+    recommended_manga = get_recommendations(title, similarity_matrix, titles, df)
 
-    print("Recommended manga for '{}' are:".format(query_title))
-    for manga in recommended_manga:
-        print(manga)
+    return recommended_manga, similarity_matrix, titles, df
 
 
-if __name__ == "__main__":
-    main()
+def quick_calc(title, similarity_matrix, titles, df):
+    recommended_manga = get_recommendations(title, similarity_matrix, titles, df)
+    return recommended_manga
