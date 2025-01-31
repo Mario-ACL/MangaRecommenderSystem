@@ -16,7 +16,7 @@ def search_manga(query, api_key):
 
 
 # Example usage:
-api_key = "a044b8aedae39105b39e762df0b13409"
+api_key = ""
 query = "One Piece"
 results = search_manga(query, api_key)
 
